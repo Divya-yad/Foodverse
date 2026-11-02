@@ -39,11 +39,22 @@ export async function api(path, { method = 'GET', json, form, query, retry = tru
     return api(path, { method, json, form, query, retry: false })
   }
   if (res.status === 204) return null
-  const data = await res.json().catch(() => null)
+  const contentType = res.headers.get('content-type') || ''
+  const isJson = contentType.includes('application/json')
+  const data = isJson ? await res.json().catch(() => null) : null
+
   if (!res.ok) {
     const e = data?.error
     throw new ApiError(res.status, e?.code || 'error', e?.message || `Request failed (${res.status})`, e?.details)
   }
+
+  if (data === null) {
+    if (contentType.includes('text/html')) {
+      throw new ApiError(502, 'backend_unreachable', 'The API endpoint returned HTML instead of JSON. Ensure the backend is running and the /api proxy or rewrite is properly configured.')
+    }
+    throw new ApiError(res.status, 'invalid_response', 'Backend returned an empty or invalid response.')
+  }
+
   return data
 }
 

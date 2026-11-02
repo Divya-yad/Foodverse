@@ -16,8 +16,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   const start = useCallback(async (path, body) => {
-    const { access_token } = await api(path, { method: 'POST', json: body })
-    setToken(access_token)
+    const data = await api(path, { method: 'POST', json: body })
+    if (!data?.access_token) {
+      throw new Error('Authentication failed: No access token received from server.')
+    }
+    setToken(data.access_token)
     setUser(await api('/auth/me'))
   }, [])
 
